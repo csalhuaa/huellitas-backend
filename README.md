@@ -122,7 +122,3 @@ gcloud run deploy huellitas-api \
   --region=us-central1 \
   --allow-unauthenticated
 ```
-
-## 📄 Licencia
-
-MIT
