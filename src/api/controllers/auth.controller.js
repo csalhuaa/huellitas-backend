@@ -2,37 +2,55 @@
 const asyncHandler = require('../../utils/asyncHandler');
 const logger = require('../../utils/logger');
 
+const { db } = require('../../services/database.service');
+
 /**
- * POST /api/auth/register
- * Registrar un nuevo usuario (después de autenticarse con Firebase)
+ * POST /api/auth/sync
+ * Sincronizar usuario de Supabase con nuestra BD
  */
-const register = asyncHandler(async (req, res) => {
-  // TODO: Implementar lógica de registro
-  logger.info('Registro de usuario', { userId: req.user.uid });
+const syncUser = asyncHandler(async (req, res) => {
+  const { user_id, email, full_name, phone_number } = req.body;
+  
+  if (!user_id || !email) {
+    return res.status(400).json({
+      success: false,
+      error: 'user_id y email son requeridos',
+    });
+  }
+  
+  // Verificar si ya existe
+  const existingUser = await db('users')
+    .where('user_id', user_id)
+    .first();
+  
+  if (existingUser) {
+    logger.info('Usuario ya existe', { userId: user_id });
+    return res.json({ 
+      success: true, 
+      message: 'Usuario ya existe',
+      data: existingUser 
+    });
+  }
+  
+  // Crear usuario
+  const [user] = await db('users')
+    .insert({
+      user_id,
+      email,
+      full_name: full_name || null,
+      phone_number: phone_number || null,
+    })
+    .returning('*');
+  
+  logger.info('Usuario sincronizado', { userId: user_id });
   
   res.status(201).json({
     success: true,
-    message: 'Usuario registrado exitosamente',
-    data: { userId: req.user.uid },
-  });
-});
-
-/**
- * POST /api/auth/login
- * Login (el token ya fue verificado por el middleware)
- */
-const login = asyncHandler(async (req, res) => {
-  // TODO: Implementar lógica de login
-  logger.info('Login de usuario', { userId: req.user.uid });
-  
-  res.json({
-    success: true,
-    message: 'Login exitoso',
-    data: { userId: req.user.uid },
+    message: 'Usuario creado exitosamente',
+    data: user,
   });
 });
 
 module.exports = {
-  register,
-  login,
+  syncUser,
 };

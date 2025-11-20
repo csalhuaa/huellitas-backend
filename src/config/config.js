@@ -25,7 +25,7 @@ module.exports = {
   
   // Storage
   storage: {
-    bucket: process.env.STORAGE_BUCKET,
+    bucket: process.env.GCP_BUCKET_NAME,
   },
   
   // IA API

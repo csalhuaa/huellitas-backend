@@ -9,6 +9,7 @@ const lostReportsRoutes = require('./lostReports.routes');
 const sightingReportsRoutes = require('./sightingReports.routes');
 const matchesRoutes = require('./matches.routes');
 const mapRoutes = require('./map.routes');
+const testRoutes = require('./test.routes');
 
 // Montar rutas
 router.use('/auth', authRoutes);
@@ -17,5 +18,6 @@ router.use('/lost-reports', lostReportsRoutes);
 router.use('/sighting-reports', sightingReportsRoutes);
 router.use('/matches', matchesRoutes);
 router.use('/map', mapRoutes);
+router.use('/test', testRoutes);
 
 module.exports = router;
