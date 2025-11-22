@@ -4,6 +4,11 @@ const router = express.Router();
 const { testUpload } = require('../controllers/test.controller');
 const upload = require('../middleware/upload.middleware');
 const { verifySupabaseToken } = require('../middleware/auth.middleware');
+const { testIaHealth } = require('../controllers/test.controller');
+const { testIaMetrics } = require('../controllers/test.controller');
+const { testIaAdd } = require('../controllers/test.controller');
+const { testIaSearch } = require('../controllers/test.controller');
+const { testIaFullFlow } = require('../controllers/test.controller');
 
 /**
  * @swagger
@@ -60,5 +65,119 @@ const { verifySupabaseToken } = require('../middleware/auth.middleware');
  *         description: No autorizado - Token inválido
  */
 router.post('/upload', verifySupabaseToken, upload.single('image'), testUpload);
+
+/**
+ * @swagger
+ * /api/test/ia-health:
+ *   get:
+ *     summary: Health check de la API IA
+ *     tags: [Test]
+ *     responses:
+ *       200:
+ *         description: Estado de los servicios IA
+ */
+router.get('/ia-health', testIaHealth);
+
+/**
+ * @swagger
+ * /api/test/ia-metrics:
+ *   get:
+ *     summary: Métricas del índice vectorial
+ *     tags: [Test]
+ *     responses:
+ *       200:
+ *         description: Estadísticas de Pinecone
+ */
+router.get('/ia-metrics', testIaMetrics);
+
+/**
+ * @swagger
+ * /api/test/ia-add:
+ *   post:
+ *     summary: Probar agregar mascota a IA
+ *     tags: [Test]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *               pet_id:
+ *                 type: string
+ *               event_date:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       200:
+ *         description: Mascota agregada exitosamente
+ */
+router.post('/ia-add', verifySupabaseToken, upload.single('image'), testIaAdd);
+
+/**
+ * @swagger
+ * /api/test/ia-search:
+ *   post:
+ *     summary: Probar búsqueda de mascotas
+ *     tags: [Test]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *               min_event_date:
+ *                 type: string
+ *                 format: date
+ *               max_event_date:
+ *                 type: string
+ *                 format: date
+ *               n_results:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Búsqueda completada
+ */
+router.post('/ia-search', verifySupabaseToken, upload.single('image'), testIaSearch);
+
+/**
+ * @swagger
+ * /api/test/ia-full-flow:
+ *   post:
+ *     summary: Probar flujo completo (Storage + IA + Búsqueda)
+ *     tags: [Test]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *               pet_id:
+ *                 type: string
+ *               event_date:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       200:
+ *         description: Flujo completo ejecutado
+ */
+router.post('/ia-full-flow', verifySupabaseToken, upload.single('image'), testIaFullFlow);
 
 module.exports = router;
