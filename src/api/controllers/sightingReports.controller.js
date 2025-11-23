@@ -1,6 +1,9 @@
 // src/api/controllers/sightingReports.controller.js
 const asyncHandler = require('../../utils/asyncHandler');
 const logger = require('../../utils/logger');
+const storageService = require('../../services/storage.service');
+const iaApiService = require('../../services/iaApi.service');
+const notificationService = require('../../services/notification.service');
 const {
   db,
   makePoint,
@@ -8,33 +11,49 @@ const {
   getCoordinates,
 } = require('../../services/database.service');
 
+
 /**
  * POST /api/sighting-reports
- * Crear un nuevo reporte de avistamiento
+ * Crear un nuevo reporte de avistamiento CON IMAGEN Y BÚSQUEDA DE MATCHES
  */
 const createSighting = asyncHandler(async (req, res) => {
   const {
     description,
     sighting_date,
-    location, // { lat, lng } or { latitude, longitude }
+    location,
     location_text,
   } = req.body;
 
-  // El reporter_user_id viene del token verificado
   const reporter_user_id = req.user?.uid;
 
   // Validaciones
   if (!reporter_user_id) {
-    return res.status(401).json({ 
-      success: false, 
-      error: 'Usuario no autenticado' 
+    return res.status(401).json({
+      success: false,
+      error: 'Usuario no autenticado'
     });
   }
 
   if (!sighting_date) {
-    return res.status(400).json({ 
-      success: false, 
-      error: 'sighting_date es requerido' 
+    return res.status(400).json({
+      success: false,
+      error: 'sighting_date es requerido'
+    });
+  }
+
+  // Validar formato de fecha
+  if (!/^\d{4}-\d{2}-\d{2}/.test(sighting_date)) {
+    return res.status(400).json({
+      success: false,
+      error: 'sighting_date debe estar en formato YYYY-MM-DD'
+    });
+  }
+
+  // Validar imagen
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      error: 'Se requiere una imagen del avistamiento'
     });
   }
 
@@ -45,47 +64,161 @@ const createSighting = asyncHandler(async (req, res) => {
     longitude = location.lng ?? location.longitude;
   }
 
-  logger.info('Creando reporte de avistamiento', { 
-    reporter_user_id, 
-    hasLocation: !!(latitude && longitude) 
+  logger.info('Creando reporte de avistamiento con IA', {
+    reporter_user_id,
+    hasLocation: !!(latitude && longitude),
+    hasImage: true
   });
 
   // Preparar datos para inserción
-  // El status siempre es 'En_Calle' al crear
   const insertData = {
     reporter_user_id,
     description: description || null,
-    status: 'En_Calle', // Siempre En_Calle al crear
+    status: 'En_Calle',
     sighting_date,
     location_text: location_text || null,
   };
 
-  // Si hay coordenadas válidas, crear punto geográfico
   if (latitude !== undefined && longitude !== undefined) {
     insertData.location = makePoint(longitude, latitude);
   }
 
-  // Insertar reporte
+  // 1. Crear sighting
   const [sighting] = await db('sighting_reports')
     .insert(insertData)
     .returning('*');
 
-  // Recuperar con coordenadas formateadas usando el helper
+  logger.info('Sighting creado', { sightingId: sighting.sighting_id });
+
+  // 2. Subir imagen a Cloud Storage
+  const filename = storageService.generateUniqueFilename(req.file.originalname);
+  const storagePath = `sightings/${sighting.sighting_id}/${filename}`;
+  const imageUrl = await storageService.uploadImage(req.file, storagePath);
+
+  logger.info('Imagen subida a storage', { url: imageUrl });
+
+  // 3. Agregar a API IA
+  const iaResult = await iaApiService.addPet(
+    req.file.buffer,
+    sighting.sighting_id,
+    new Date(sighting_date).toISOString().split('T')[0]
+  );
+
+  logger.info('Imagen agregada a IA', { photoId: iaResult.photo_id });
+
+  // 4. Guardar referencia en pet_images
+  const [image] = await db('pet_images')
+    .insert({
+      s3_url: imageUrl,
+      vector_id: iaResult.photo_id,
+      sighting_id: sighting.sighting_id
+    })
+    .returning('*');
+
+  logger.info('Buscando matches similares...');
+
+  const sightingDateObj = new Date(sighting_date);
+
+  const minDate = new Date(sightingDateObj);
+  minDate.setDate(minDate.getDate() - 30); // Hasta 30 días antes del avistamiento
+
+  const maxDate = new Date(sightingDateObj);
+  maxDate.setDate(maxDate.getDate() + 7); // Hasta 7 días después (margen)
+
+  logger.info('Rango de búsqueda de fechas', {
+    minDate: minDate.toISOString().split('T')[0],
+    maxDate: maxDate.toISOString().split('T')[0]
+  });
+
+  const matches = await iaApiService.searchSimilarPets(req.file.buffer, {
+    minEventDate: minDate.toISOString().split('T')[0],
+    maxEventDate: maxDate.toISOString().split('T')[0],
+    nResults: 20
+  });
+
+  logger.info(`Encontrados ${matches.length} potenciales matches`);
+
+  // 6. Guardar matches con score >= 0.75
+  const MIN_SIMILARITY = 0.75;
+  const savedMatches = [];
+
+  for (const match of matches) {
+    if (match.similarity >= MIN_SIMILARITY) {
+      try {
+        // Verificar que el lost report existe y está activo
+        const lostReport = await db('lost_pet_reports')
+          .select('owner_user_id', 'pet_name', 'status')
+          .where('report_id', match.pet_id)
+          .first();
+
+        if (!lostReport || lostReport.status !== 'Activa') {
+          continue; // Skip si no existe o no está activo
+        }
+
+        // Guardar match en BD
+        const [savedMatch] = await db('matches')
+          .insert({
+            report_id: match.pet_id,
+            sighting_id: sighting.sighting_id,
+            ai_distance_score: match.similarity,
+            status: 'Pending'
+          })
+          .returning('*');
+
+        savedMatches.push(savedMatch);
+
+        // Enviar notificación al dueño
+        try {
+          await notificationService.sendMatchNotification(
+            lostReport.owner_user_id,
+            {
+              match_id: savedMatch.match_id,
+              score: match.similarity,
+              pet_name: lostReport.pet_name
+            }
+          );
+
+          logger.info('Notificación enviada', {
+            userId: lostReport.owner_user_id,
+            matchId: savedMatch.match_id
+          });
+        } catch (notifError) {
+          // No fallar si la notificación falla
+          logger.warn('Error enviando notificación', {
+            error: notifError.message
+          });
+        }
+      } catch (error) {
+        logger.error('Error procesando match', {
+          error: error.message,
+          matchPetId: match.pet_id
+        });
+      }
+    }
+  }
+
+  logger.info(`${savedMatches.length} matches guardados y notificados`);
+
+  // 7. Recuperar sighting con coordenadas
   const result = await db('sighting_reports')
     .select('sighting_reports.*', getCoordinates('location'))
     .where('sighting_id', sighting.sighting_id)
     .first();
 
-  // Limpiar respuesta
   const { location: _, ...cleanedResult } = result;
-
-  logger.info('Reporte de avistamiento creado exitosamente', { 
-    sightingId: sighting.sighting_id 
-  });
 
   res.status(201).json({
     success: true,
-    data: cleanedResult,
+    data: {
+      sighting: cleanedResult,
+      image,
+      matches_found: savedMatches.length,
+      matches: savedMatches.map(m => ({
+        match_id: m.match_id,
+        report_id: m.report_id,
+        score: m.ai_distance_score
+      }))
+    },
   });
 });
 
@@ -105,11 +238,11 @@ const getSightings = asyncHandler(async (req, res) => {
     offset = 0,
   } = req.query;
 
-  logger.info('Obteniendo reportes de avistamientos', { 
-    status, 
+  logger.info('Obteniendo reportes de avistamientos', {
+    status,
     hasGeoFilter: !!(lat && lng && radius),
     limit,
-    offset 
+    offset
   });
 
   // Construir query base con el helper getCoordinates
@@ -149,7 +282,7 @@ const getSightings = asyncHandler(async (req, res) => {
 
   // Filtro geográfico y ordenamiento
   const hasGeoFilter = lat !== undefined && lng !== undefined && radius !== undefined;
-  
+
   if (hasGeoFilter) {
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lng);
@@ -277,9 +410,9 @@ const updateSighting = asyncHandler(async (req, res) => {
 
   const reporter_user_id = req.user?.uid;
 
-  logger.info('Actualizando reporte de avistamiento', { 
-    sightingId: id, 
-    userId: reporter_user_id 
+  logger.info('Actualizando reporte de avistamiento', {
+    sightingId: id,
+    userId: reporter_user_id
   });
 
   // Verificar que el reporte existe
@@ -306,7 +439,7 @@ const updateSighting = asyncHandler(async (req, res) => {
   const updateData = {};
 
   if (description !== undefined) updateData.description = description;
-  
+
   // Validar status si se proporciona
   if (status !== undefined) {
     const validStatuses = ['En_Calle', 'En_Albergue', 'Reunido'];
@@ -318,7 +451,7 @@ const updateSighting = asyncHandler(async (req, res) => {
     }
     updateData.status = status;
   }
-  
+
   if (location_text !== undefined) updateData.location_text = location_text;
 
   // Actualizar ubicación si se proporciona
@@ -363,9 +496,9 @@ const deleteSighting = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const reporter_user_id = req.user?.uid;
 
-  logger.info('Eliminando reporte de avistamiento', { 
-    sightingId: id, 
-    userId: reporter_user_id 
+  logger.info('Eliminando reporte de avistamiento', {
+    sightingId: id,
+    userId: reporter_user_id
   });
 
   // Verificar que el reporte existe

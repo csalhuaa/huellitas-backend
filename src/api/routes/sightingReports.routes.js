@@ -9,50 +9,45 @@ const {
   deleteSighting 
 } = require('../controllers/sightingReports.controller');
 //const { verifySupabaseToken } = require('../middleware/auth.middleware'); //cambiar para usar el original
+const upload = require('../middleware/upload.middleware');
 const { verifyLocalToken: verifySupabaseToken } = require('../middleware/auth.middleware.local') //parche de validar el token
 
 /**
  * @swagger
  * /api/sighting-reports:
  *   post:
- *     summary: Crear un nuevo reporte de avistamiento
- *     description: Crea un reporte de avistamiento. El status siempre será 'En_Calle' al momento de crear.
+ *     summary: Crear avistamiento con búsqueda automática de matches
+ *     description: Crea un avistamiento con imagen. Busca automáticamente mascotas perdidas similares y notifica a los dueños.
  *     tags: [Sighting Reports]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
+ *               - image
  *               - sighting_date
  *             properties:
- *               description:
+ *               image:
  *                 type: string
- *                 example: "Perro callejero color café, parece amigable"
+ *                 format: binary
+ *                 description: Foto del animal avistado
  *               sighting_date:
  *                 type: string
- *                 format: date-time
- *                 example: "2025-01-15T14:30:00Z"
- *               location:
- *                 type: object
- *                 properties:
- *                   lat:
- *                     type: number
- *                     format: float
- *                     example: -16.409047
- *                   lng:
- *                     type: number
- *                     format: float
- *                     example: -71.537451
+ *                 format: date
+ *                 example: "2025-11-23"
+ *               description:
+ *                 type: string
+ *                 example: "Perro callejero color café"
  *               location_text:
  *                 type: string
- *                 example: "Cerca del parque Selva Alegre, Arequipa"
+ *                 example: "Cerca del parque Selva Alegre"
  *     responses:
  *       201:
- *         description: Reporte de avistamiento creado exitosamente
+ *         description: Sighting creado con matches encontrados
  *         content:
  *           application/json:
  *             schema:
@@ -60,42 +55,19 @@ const { verifyLocalToken: verifySupabaseToken } = require('../middleware/auth.mi
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: true
  *                 data:
  *                   type: object
  *                   properties:
- *                     sighting_id:
- *                       type: string
- *                       format: uuid
- *                     reporter_user_id:
- *                       type: string
- *                     description:
- *                       type: string
- *                     status:
- *                       type: string
- *                       example: "En_Calle"
- *                       description: "Siempre será 'En_Calle' al crear"
- *                     sighting_date:
- *                       type: string
- *                       format: date-time
- *                     longitude:
- *                       type: number
- *                     latitude:
- *                       type: number
- *                     location_text:
- *                       type: string
- *                     created_at:
- *                       type: string
- *                       format: date-time
- *                     updated_at:
- *                       type: string
- *                       format: date-time
- *       401:
- *         description: No autorizado - Token inválido
- *       400:
- *         description: Datos de entrada inválidos
+ *                     sighting:
+ *                       type: object
+ *                     image:
+ *                       type: object
+ *                     matches_found:
+ *                       type: integer
+ *                     matches:
+ *                       type: array
  */
-router.post('/', verifySupabaseToken, createSighting);
+router.post('/', verifySupabaseToken, upload.single('image'), createSighting);
 
 /**
  * @swagger
