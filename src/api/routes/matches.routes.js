@@ -8,8 +8,8 @@ const {
   updateMatch,
   deleteMatch,
 } = require('../controllers/matches.controller');
-//const { verifySupabaseToken } = require('../middleware/auth.middleware'); //cambiar para usar el original
-const { verifyLocalToken: verifySupabaseToken } = require('../middleware/auth.middleware.local') //parche de validar el token
+const { verifySupabaseToken } = require('../middleware/auth.middleware');
+// const { verifyLocalToken: verifySupabaseToken } = require('../middleware/auth.middleware.local') //parche de validar el token
 
 /**
  * @swagger

@@ -8,9 +8,9 @@ const {
   updateSighting,
   deleteSighting 
 } = require('../controllers/sightingReports.controller');
-//const { verifySupabaseToken } = require('../middleware/auth.middleware'); //cambiar para usar el original
+const { verifySupabaseToken } = require('../middleware/auth.middleware');
 const upload = require('../middleware/upload.middleware');
-const { verifyLocalToken: verifySupabaseToken } = require('../middleware/auth.middleware.local') //parche de validar el token
+// const { verifyLocalToken: verifySupabaseToken } = require('../middleware/auth.middleware.local') //parche de validar el token
 
 /**
  * @swagger

@@ -39,11 +39,10 @@ if (config.nodeEnv === 'development') {
 
 // Health check (sin autenticación)
 app.get('/health', (req, res) => {
-  res.json({
-    success: true,
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: config.nodeEnv,
+  res.status(200).json({ 
+    status: 'healthy',
+    service: 'huellitas-backend',
+    timestamp: new Date().toISOString()
   });
 });
 

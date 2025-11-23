@@ -1,32 +1,35 @@
 # Dockerfile
 FROM node:18-alpine
 
+# Instalar dependencias del sistema para node-gyp (por si acaso)
+RUN apk add --no-cache python3 make g++
+
 # Crear directorio de trabajo
 WORKDIR /app
 
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar solo dependencias de producción
+# Instalar dependencias (incluir devDependencies para build si es necesario)
 RUN npm ci --only=production && npm cache clean --force
 
 # Copiar código fuente
 COPY . .
 
 # Crear usuario no-root para seguridad
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001 && \
+    chown -R nodejs:nodejs /app
+
 USER nodejs
 
-# Exponer puerto (Cloud Run usa PORT automáticamente)
-EXPOSE 8080
-
-# Variables de entorno por defecto
+# Cloud Run asigna PORT automáticamente (usualmente 8080)
+# Tu app debe leer process.env.PORT
 ENV NODE_ENV=production
-ENV PORT=8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# Health check (ahora usa /health en raíz)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:' + process.env.PORT + '/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Comando para iniciar la aplicación
+# Comando para iniciar
 CMD ["node", "src/server.js"]

@@ -8,7 +8,8 @@ const {
   updateLostReportStatus
 } = require('../controllers/lostReports.controller');
 const upload = require('../middleware/upload.middleware');
-const { verifyLocalToken: verifySupabaseToken } = require('../middleware/auth.middleware.local');
+// const { verifyLocalToken: verifySupabaseToken } = require('../middleware/auth.middleware.local');
+const { verifySupabaseToken } = require('../middleware/auth.middleware');
 
 /**
  * @swagger
