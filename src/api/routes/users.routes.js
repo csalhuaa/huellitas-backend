@@ -1,7 +1,7 @@
 // src/api/routes/users.routes.js
 const express = require('express');
 const router = express.Router();
-const { createUser, getUserById, updateUser} = require('../controllers/users.controller');
+const { getUserById, updateUser, getUserProfile } = require('../controllers/users.controller');
 const { verifySupabaseToken } = require('../middleware/auth.middleware');
 
 /**

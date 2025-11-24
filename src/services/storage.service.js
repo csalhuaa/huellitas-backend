@@ -81,8 +81,10 @@ class StorageService {
       });
       
       blobStream.on('finish', async () => {
-        // await blob.makePublic();
-        const publicUrl = `https://storage.googleapis.com/${this.bucket.name}/${destinationPath}`;
+        const bucketName = this.bucket.name.trim();
+        const cleanPath = destinationPath.trim();
+        
+        const publicUrl = `https://storage.googleapis.com/${bucketName}/${cleanPath}`;
         logger.info('✅ Imagen subida a GCP', { url: publicUrl });
         resolve(publicUrl);
       });
