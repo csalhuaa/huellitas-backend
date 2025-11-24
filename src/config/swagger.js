@@ -10,9 +10,11 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
-        description: 'Desarrollo',
-      },
+        url: process.env.NODE_ENV === 'production'
+          ? 'https://huellitas-backend-892115920383.us-central1.run.app'
+          : 'http://localhost:3000',
+        description: process.env.NODE_ENV === 'production' ? 'Producción' : 'Desarrollo'
+      }
     ],
     components: {
       securitySchemes: {

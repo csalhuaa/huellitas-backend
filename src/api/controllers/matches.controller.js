@@ -11,6 +11,13 @@ const getUserMatches = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const { status, limit = 50, offset = 0 } = req.query;
 
+  if (userId !== req.user?.uid) {
+    return res.status(403).json({
+      success: false,
+      error: 'No autorizado para ver matches de otro usuario'
+    });
+  }
+
   logger.info('Obteniendo coincidencias de usuario', { userId, status });
 
   // Construir query base con joins para obtener información completa
@@ -125,6 +132,13 @@ const getMatchById = asyncHandler(async (req, res) => {
     return res.status(404).json({
       success: false,
       error: 'Coincidencia no encontrada',
+    });
+  }
+
+  if (match.owner_user_id !== req.user?.uid && match.reporter_user_id !== req.user?.uid) {
+    return res.status(403).json({
+      success: false,
+      error: 'No autorizado para ver este match'
     });
   }
 

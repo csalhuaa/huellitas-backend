@@ -5,7 +5,6 @@ module.exports = {
   development: {
     client: 'pg',
     connection: {
-      // Usamos las variables de entorno para la conexión
       host: process.env.DB_HOST || '127.0.0.1',
       port: process.env.DB_PORT || 5432,
       database: process.env.DB_NAME || 'huellitas_dev',
@@ -23,8 +22,7 @@ module.exports = {
 
   production: {
     client: 'pg',
-    connection: {
-      // Para Cloud SQL con Unix Socket o conexión estándar
+    connection: process.env.DATABASE_URL || {
       host: process.env.DB_SOCKET_PATH || process.env.DB_HOST,
       port: process.env.DB_PORT || 5432,
       database: process.env.DB_NAME,

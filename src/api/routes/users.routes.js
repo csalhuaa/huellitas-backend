@@ -6,69 +6,6 @@ const { verifySupabaseToken } = require('../middleware/auth.middleware');
 
 /**
  * @swagger
- * /api/users:
- *   post:
- *     summary: Crear un nuevo usuario
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - user_id
- *               - email
- *             properties:
- *               user_id:
- *                 type: string
- *                 example: "firebase-uid-12345"
- *               email:
- *                 type: string
- *                 format: email
- *                 example: "usuario@example.com"
- *               full_name:
- *                 type: string
- *                 example: "Juan Pérez"
- *               phone_number:
- *                 type: string
- *                 example: "+51987654321"
- *     responses:
- *       201:
- *         description: Usuario creado exitosamente
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     user_id:
- *                       type: string
- *                     email:
- *                       type: string
- *                     full_name:
- *                       type: string
- *                     phone_number:
- *                       type: string
- *                     created_at:
- *                       type: string
- *                       format: date-time
- *       401:
- *         description: No autorizado - Token inválido
- *       409:
- *         description: Usuario ya existe
- */
-router.post('/', verifySupabaseToken, createUser);
-
-/**
- * @swagger
  * /api/users/{id}:
  *   get:
  *     summary: Obtener un usuario por ID

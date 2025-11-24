@@ -13,14 +13,14 @@ module.exports = {
     database: process.env.DB_NAME,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    socketPath: process.env.DB_SOCKET_PATH, // Para Cloud SQL
+    socketPath: process.env.DB_SOCKET_PATH,
+    url: process.env.DATABASE_URL, // Para producción (Cloud SQL)
   },
   
-  // Firebase
-  firebase: {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  // Supabase (Auth)
+  supabase: {
+    url: process.env.SUPABASE_URL,
+    anonKey: process.env.SUPABASE_ANON_KEY,
   },
   
   // Storage

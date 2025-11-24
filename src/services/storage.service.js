@@ -10,12 +10,30 @@ class StorageService {
     this.useGCP = !!config.gcp.projectId;
     
     if (this.useGCP) {
-      this.storage = new Storage({
-        projectId: config.gcp.projectId,
-        keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-      });
+      // ⭐ CAMBIO: Manejar JSON desde env var O archivo
+      let storageOptions = { projectId: config.gcp.projectId };
+      
+      if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+        // Producción: JSON desde variable de entorno
+        try {
+          const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+          storageOptions.credentials = credentials;
+          logger.info('✅ Storage configurado con JSON de env var');
+        } catch (error) {
+          logger.error('Error parseando GOOGLE_APPLICATION_CREDENTIALS_JSON', { error: error.message });
+          throw error;
+        }
+      } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        // Desarrollo: archivo JSON
+        storageOptions.keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+        logger.info('✅ Storage configurado con archivo de credenciales');
+      } else {
+        throw new Error('GCP credentials not configured');
+      }
+      
+      this.storage = new Storage(storageOptions);
       this.bucket = this.storage.bucket(config.storage.bucket);
-      logger.info('✅ Storage configurado con Google Cloud Storage');
+      logger.info('✅ Storage bucket inicializado');
     } else {
       this.localStoragePath = path.join(__dirname, '../../uploads');
       this.ensureLocalStorageExists();
@@ -105,7 +123,6 @@ class StorageService {
     }
   }
   
-  // ⭐ AGREGAR ESTA FUNCIÓN
   generateUniqueFilename(originalName) {
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 8);

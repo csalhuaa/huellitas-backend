@@ -4,37 +4,18 @@ const { db } = require('../../services/database.service');
 const logger = require('../../utils/logger');
 
 /**
- * POST /api/users
- * Crear un nuevo usuario
- */
-const createUser = asyncHandler(async (req, res) => {
-  const { user_id, email, full_name, phone_number } = req.body;
-  
-  logger.info('Creando usuario', { email });
-  
-  const [user] = await db('users')
-    .insert({
-      user_id,
-      email,
-      full_name,
-      phone_number,
-    })
-    .returning('*');
-  
-  logger.info('Usuario creado exitosamente', { userId: user.user_id });
-  
-  res.status(201).json({
-    success: true,
-    data: user,
-  });
-});
-
-/**
  * GET /api/users/:id
  * Obtener usuario por ID
  */
 const getUserById = asyncHandler(async (req, res) => {
   const { id } = req.params;
+
+  if (id !== req.user?.uid) {
+    return res.status(403).json({
+      success: false,
+      error: 'No autorizado para ver información de otro usuario'
+    });
+  }
   
   logger.info('Obteniendo usuario', { userId: id });
   
@@ -62,6 +43,13 @@ const getUserById = asyncHandler(async (req, res) => {
 const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { full_name, phone_number, push_notification_token } = req.body;
+
+  if (id !== req.user?.uid) {
+    return res.status(403).json({
+      success: false,
+      error: 'No autorizado para actualizar información de otro usuario'
+    });
+  }
   
   logger.info('Actualizando usuario', { userId: id });
   
@@ -93,7 +81,6 @@ const updateUser = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  createUser,
   getUserById,
   updateUser,
 };
