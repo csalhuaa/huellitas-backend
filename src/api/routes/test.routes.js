@@ -9,6 +9,7 @@ const { testIaMetrics } = require('../controllers/test.controller');
 const { testIaAdd } = require('../controllers/test.controller');
 const { testIaSearch } = require('../controllers/test.controller');
 const { testIaFullFlow } = require('../controllers/test.controller');
+const { testNotification } = require('../controllers/test.controller');
 
 /**
  * @swagger
@@ -179,5 +180,19 @@ router.post('/ia-search', verifySupabaseToken, upload.single('image'), testIaSea
  *         description: Flujo completo ejecutado
  */
 router.post('/ia-full-flow', verifySupabaseToken, upload.single('image'), testIaFullFlow);
+
+/**
+ * @swagger
+ * /api/test/notification:
+ *   post:
+ *     summary: Probar notificación push
+ *     tags: [Test]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Notificación enviada
+ */
+router.post('/notification', verifySupabaseToken, testNotification);
 
 module.exports = router;

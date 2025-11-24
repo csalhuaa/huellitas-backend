@@ -3,6 +3,7 @@ const asyncHandler = require('../../utils/asyncHandler');
 const storageService = require('../../services/storage.service');
 const iaApiService = require('../../services/iaApi.service');
 const logger = require('../../utils/logger');
+const notificationService = require('../../services/notification.service');
 
 /**
  * POST /api/test/upload
@@ -182,6 +183,35 @@ const testIaFullFlow = asyncHandler(async (req, res) => {
   });
 });
 
+/**
+ * POST /api/test/notification
+ */
+const testNotification = asyncHandler(async (req, res) => {
+  const userId = req.user?.uid;
+
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      error: 'Usuario no autenticado',
+    });
+  }
+
+  const result = await notificationService.sendTestNotification(userId);
+
+  if (result.success) {
+    res.json({
+      success: true,
+      message: 'Notificación enviada',
+      data: result,
+    });
+  } else {
+    res.status(500).json({
+      success: false,
+      error: result.reason,
+    });
+  }
+});
+
 module.exports = {
   testUpload,
   testIaHealth,
@@ -189,4 +219,5 @@ module.exports = {
   testIaAdd,
   testIaSearch,
   testIaFullFlow,
+  testNotification,
 };

@@ -121,4 +121,106 @@ router.get('/:id', verifySupabaseToken, getUserById);
  */
 router.put('/:id', verifySupabaseToken, updateUser);
 
+/**
+ * @swagger
+ * /api/users/{id}/profile:
+ *   get:
+ *     summary: Obtener perfil completo con estadísticas
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID del usuario
+ *         example: "abc123-def456-ghi789"
+ *     responses:
+ *       200:
+ *         description: Perfil obtenido exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       type: object
+ *                       properties:
+ *                         user_id:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         full_name:
+ *                           type: string
+ *                         phone_number:
+ *                           type: string
+ *                         created_at:
+ *                           type: string
+ *                           format: date-time
+ *                     stats:
+ *                       type: object
+ *                       properties:
+ *                         lost_reports:
+ *                           type: object
+ *                           properties:
+ *                             total:
+ *                               type: integer
+ *                             active:
+ *                               type: integer
+ *                         sightings:
+ *                           type: object
+ *                           properties:
+ *                             total:
+ *                               type: integer
+ *                         matches:
+ *                           type: object
+ *                           properties:
+ *                             pending:
+ *                               type: integer
+ *                             confirmed:
+ *                               type: integer
+ *                     recent_activity:
+ *                       type: object
+ *                       properties:
+ *                         lost_reports:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               report_id:
+ *                                 type: string
+ *                               pet_name:
+ *                                 type: string
+ *                               species:
+ *                                 type: string
+ *                               status:
+ *                                 type: string
+ *                               created_at:
+ *                                 type: string
+ *                                 format: date-time
+ *                         sightings:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               sighting_id:
+ *                                 type: string
+ *                               description:
+ *                                 type: string
+ *                               status:
+ *                                 type: string
+ *                               created_at:
+ *                                 type: string
+ *                                 format: date-time
+ */
+router.get('/:id/profile', verifySupabaseToken, getUserProfile);
+
 module.exports = router;
