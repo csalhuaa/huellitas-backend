@@ -162,10 +162,14 @@ const getLostReports = asyncHandler(async (req, res) => {
   });
 
   let query = db('lost_pet_reports')
-    .select(
-      'lost_pet_reports.*',
-      getCoordinates('location')
-    );
+  .leftJoin('pet_images', 'lost_pet_reports.report_id', 'pet_images.report_id')
+  .select(
+    'lost_pet_reports.*',
+    getCoordinates('location'),
+    'pet_images.image_id',
+    'pet_images.s3_url as image_url',  // ← Alias para facilitar
+    'pet_images.vector_id'
+  );
 
   // Filtros
   if (status) {

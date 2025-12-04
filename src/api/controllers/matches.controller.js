@@ -5,7 +5,7 @@ const { db } = require('../../services/database.service');
 
 /**
  * GET /api/matches/user/:userId
- * Obtener coincidencias de un usuario específico
+ * Obtener coincidencias de un usuario específico CON IMÁGENES
  */
 const getUserMatches = asyncHandler(async (req, res) => {
   const { userId } = req.params;
@@ -20,7 +20,7 @@ const getUserMatches = asyncHandler(async (req, res) => {
 
   logger.info('Obteniendo coincidencias de usuario', { userId, status });
 
-  // Construir query base con joins para obtener información completa
+  // ⭐ CAMBIO: Agregar LEFT JOINs con pet_images
   let query = db('matches')
     .select(
       'matches.match_id',
@@ -35,13 +35,25 @@ const getUserMatches = asyncHandler(async (req, res) => {
       'lost_pet_reports.species',
       'lost_pet_reports.breed',
       'lost_pet_reports.owner_user_id',
+      // Imagen del lost report
+      'lost_images.s3_url as lost_report_image_url',
       // Información del avistamiento
       'sighting_reports.reporter_user_id',
       'sighting_reports.sighting_date',
-      'sighting_reports.location_text'
+      'sighting_reports.location_text',
+      // Imagen del sighting
+      'sighting_images.s3_url as sighting_image_url'
     )
     .join('lost_pet_reports', 'matches.report_id', 'lost_pet_reports.report_id')
     .join('sighting_reports', 'matches.sighting_id', 'sighting_reports.sighting_id')
+    // JOIN con imágenes de lost report
+    .leftJoin('pet_images as lost_images', function() {
+      this.on('lost_images.report_id', '=', 'lost_pet_reports.report_id')
+    })
+    // JOIN con imágenes de sighting
+    .leftJoin('pet_images as sighting_images', function() {
+      this.on('sighting_images.sighting_id', '=', 'sighting_reports.sighting_id')
+    })
     .where('lost_pet_reports.owner_user_id', userId);
 
   // Filtrar por status si se proporciona
@@ -98,13 +110,14 @@ const getUserMatches = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/matches/:id
- * Obtener una coincidencia por ID
+ * Obtener una coincidencia por ID CON IMÁGENES
  */
 const getMatchById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   logger.info('Obteniendo coincidencia', { matchId: id });
 
+  // ⭐ CAMBIO: Agregar LEFT JOINs con pet_images
   const match = await db('matches')
     .select(
       'matches.*',
@@ -116,15 +129,29 @@ const getMatchById = asyncHandler(async (req, res) => {
       'lost_pet_reports.owner_user_id',
       'lost_pet_reports.lost_date',
       'lost_pet_reports.status as report_status',
+      // Imagen del lost report
+      'lost_images.s3_url as lost_report_image_url',
+      'lost_images.image_id as lost_report_image_id',
       // Información del avistamiento
       'sighting_reports.reporter_user_id',
       'sighting_reports.description as sighting_description',
       'sighting_reports.sighting_date',
       'sighting_reports.location_text',
-      'sighting_reports.status as sighting_status'
+      'sighting_reports.status as sighting_status',
+      // Imagen del sighting
+      'sighting_images.s3_url as sighting_image_url',
+      'sighting_images.image_id as sighting_image_id'
     )
     .join('lost_pet_reports', 'matches.report_id', 'lost_pet_reports.report_id')
     .join('sighting_reports', 'matches.sighting_id', 'sighting_reports.sighting_id')
+    // JOIN con imágenes de lost report
+    .leftJoin('pet_images as lost_images', function() {
+      this.on('lost_images.report_id', '=', 'lost_pet_reports.report_id')
+    })
+    // JOIN con imágenes de sighting
+    .leftJoin('pet_images as sighting_images', function() {
+      this.on('sighting_images.sighting_id', '=', 'sighting_reports.sighting_id')
+    })
     .where('matches.match_id', id)
     .first();
 

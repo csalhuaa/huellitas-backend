@@ -82,7 +82,7 @@ const updateUser = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/users/:id/profile
- * Obtener perfil completo con estadísticas
+ * Obtener perfil completo con estadísticas E IMÁGENES
  */
 const getUserProfile = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -137,17 +137,32 @@ const getUserProfile = asyncHandler(async (req, res) => {
     .where('matches.status', 'Confirmed')
     .count('* as confirmed');
 
-  // 5. Obtener actividad reciente
+  // ⭐ CAMBIO: Obtener actividad reciente CON IMÁGENES
   const recentLostReports = await db('lost_pet_reports')
-    .select('report_id', 'pet_name', 'species', 'status', 'created_at')
-    .where('owner_user_id', id)
-    .orderBy('created_at', 'desc')
+    .leftJoin('pet_images', 'lost_pet_reports.report_id', 'pet_images.report_id')
+    .select(
+      'lost_pet_reports.report_id',
+      'lost_pet_reports.pet_name',
+      'lost_pet_reports.species',
+      'lost_pet_reports.status',
+      'lost_pet_reports.created_at',
+      'pet_images.s3_url as image_url'
+    )
+    .where('lost_pet_reports.owner_user_id', id)
+    .orderBy('lost_pet_reports.created_at', 'desc')
     .limit(5);
 
   const recentSightings = await db('sighting_reports')
-    .select('sighting_id', 'description', 'status', 'created_at')
-    .where('reporter_user_id', id)
-    .orderBy('created_at', 'desc')
+    .leftJoin('pet_images', 'sighting_reports.sighting_id', 'pet_images.sighting_id')
+    .select(
+      'sighting_reports.sighting_id',
+      'sighting_reports.description',
+      'sighting_reports.status',
+      'sighting_reports.created_at',
+      'pet_images.s3_url as image_url'
+    )
+    .where('sighting_reports.reporter_user_id', id)
+    .orderBy('sighting_reports.created_at', 'desc')
     .limit(5);
 
   // 6. Construir respuesta

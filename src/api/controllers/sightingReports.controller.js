@@ -247,6 +247,7 @@ const getSightings = asyncHandler(async (req, res) => {
 
   // Construir query base con el helper getCoordinates
   let query = db('sighting_reports')
+    .leftJoin('pet_images', 'sighting_reports.sighting_id', 'pet_images.sighting_id')
     .select(
       'sighting_reports.sighting_id',
       'sighting_reports.reporter_user_id',
@@ -256,7 +257,10 @@ const getSightings = asyncHandler(async (req, res) => {
       'sighting_reports.location_text',
       'sighting_reports.created_at',
       'sighting_reports.updated_at',
-      getCoordinates('location')
+      getCoordinates('location'),
+      'pet_images.image_id',
+      'pet_images.s3_url as image_url',  // ← Alias para facilitar
+      'pet_images.vector_id'
     );
 
   // Aplicar filtros
@@ -386,12 +390,19 @@ const getSightingById = asyncHandler(async (req, res) => {
     });
   }
 
+  const images = await db('pet_images')
+    .select('image_id', 's3_url', 'vector_id', 'created_at')
+    .where('sighting_id', id);
+
   // Limpiar respuesta
   const { location, ...cleanedSighting } = sighting;
 
   res.json({
     success: true,
-    data: cleanedSighting,
+    data: {
+      ...cleanedSighting,
+      images,
+    },
   });
 });
 
